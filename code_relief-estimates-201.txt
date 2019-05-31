@@ -1,4 +1,4 @@
-# This code was developed under R 3.30. It uses the following packages: molaR; Rvcg
+# This code was developed under R 3.30. It uses the following packages: molaR; Morpho; Rvcg; sp
 
 # Loading----
 PLY <- Rvcg::vcgPlyRead(myplyfile, updateNormals = TRUE, clean = TRUE)
@@ -67,14 +67,28 @@ slope.fun <- function(x) {
   return(Slope)
 }
 TR.SLOPE <- apply(TR.NORM, 1, slope.fun)
-TR.UNGAR <- SURF3D/SURF2D
 CROWN.DATA <- data.frame(SURF2D, SURF3D, TR.ELEV, TR.SLOPE, TR.UNGAR)
 OCC.DATA <- CROWN.DATA[CROWN.DATA$TR.ELEV>THRESH,]
 AV.SLOPE <- round(mean(OCC.DATA$TR.SLOPE), digits = 4)
-AV.UNGAR <- round(sum(OCC.DATA$SURF3D)/sum(OCC.DATA$SURF2D[OCC.DATA$TR.SLOPE<90]), digits = 4)
-AV.BOYER <- round(log(sqrt(sum(OCC.DATA$SURF3D))/sqrt(sum(OCC.DATA$SURF2D[OCC.DATA$TR.SLOPE<90]))), digits = 4)
 AV.GUY <- round((sum(OCC.DATA$SURF3D[OCC.DATA$TR.SLOPE<45])*mean(OCC.DATA$TR.ELEV[OCC.DATA$TR.SLOPE<45])) / (sum(OCC.DATA$SURF3D[OCC.DATA$TR.SLOPE>45])*mean(OCC.DATA$TR.ELEV[OCC.DATA$TR.SLOPE>45])), digits = 4)
 RRATE <- round(mean(OCC.DATA$TR.ELEV-THRESH)/mean(OCC.DATA$TR.ELEV), digits = 4)
+
+area2D <- function(x){
+  surface.node <- x$vb
+  surface.node <- surface.node[1:2,]
+  surface.node <- t(surface.node)
+  Hull <- grDevices::chull(x = surface.node[, 1], y = surface.node[, 2])
+  #  plot(surface.node[Hull,])
+  #  sp::polygons(surface.node[,1], surface.node[,2], density = NULL, angle = 45, border = NULL, col = NA, lty = par("lty"), fillOddEven = FALSE)
+  surface.node <- rbind(surface.node, surface.node[1,])
+  Poly <- sp::Polygon(surface.node[Hull,], hole = F)
+  Surface2D <- Poly@area
+  return(Surface2D)
+}
+SURF3D <- sum((Rvcg::vcgArea(OCC.PLY, perface = T))$pertriangle)
+SURF2D <- area2D(OCC.PLY)
+AV.UNGAR <- round(SURF3D/SURF2D, digits = 4)
+AV.BOYER <- round(log(sqrt(SURF3D)/sqrt(SURF2D)), digits = 4)
 OPCR <- molaR::OPCr(OCC.PLY)
 
 # Display results----
